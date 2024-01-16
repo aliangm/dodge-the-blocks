@@ -164,7 +164,7 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
       }
 
       setCharacterInvulnerable(true);
-      setTimeout(() => setCharacterInvulnerable(false), 5000);
+      setTimeout(() => setCharacterInvulnerable(false), 3000);
     }
   }, [characterDead]);
 

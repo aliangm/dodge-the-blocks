@@ -38,7 +38,7 @@ export default function Block({ hash, row, col, onTxConfirmed }: Prop) {
         onTxConfirmed();
         clearInterval(intervals);
       }
-    }, 10000); // I set this to 5 seconds to allow users to see blocks on the board before tx is confirmed
+    }, 30000); // I set this to 5 seconds to allow users to see blocks on the board before tx is confirmed
 
     return () => {
       clearInterval(intervals);
