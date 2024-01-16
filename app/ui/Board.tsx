@@ -31,7 +31,7 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
   const handleNewTransaction = (tx: any) => {
     const hash = tx.hash;
     const colIndex = Math.floor(Math.random() * cols) % cols;
-    console.log(tx, 'this is tx');
+
     setBlocks((blocks: BlockInfo[]) => {
       const block = blocks.findIndex(block => block.hash === tx.hash);
       if (block !== -1) return blocks;
@@ -99,13 +99,12 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
     }
   }, [blocks, characterPosition, characterDead, characterInvulnerable, setCharacterDead, reduceLife]);
 
-  // console.log(blocks, BOARD_MAP.current);
   // Subscribe to tx events
   useEffect(() => {
     const connectToBlockchain = async () => {
       const settings = {
-        apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY, // Replace with your Alchemy API Key
-        network: Network.ETH_MAINNET, // Replace with your network
+        apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
+        network: Network.ETH_MAINNET,
       };
 
       const alchemy = new Alchemy(settings);
