@@ -31,12 +31,12 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
   const handleNewTransaction = (tx: any) => {
     const hash = tx.hash;
     const colIndex = Math.floor(Math.random() * cols) % cols;
-
+    console.log(tx, 'this is tx');
     setBlocks((blocks: BlockInfo[]) => {
       const block = blocks.findIndex(block => block.hash === tx.hash);
       if (block !== -1) return blocks;
 
-      if (blocks.length > 10) return blocks;
+      // if (blocks.length > 10) return blocks;
       blocks.push({ hash, row: 0, col: colIndex, width: 1, height: 1 });
 
       return blocks;
@@ -49,7 +49,7 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
       setBlocks(prevBlocks =>
         prevBlocks.map(block => {
           if (block.row + 1 === BOARD_MAP.current[block.col]) {
-            BOARD_MAP.current[block.col] = BOARD_MAP.current[block.col] - 1;
+            BOARD_MAP.current[block.col] = BOARD_MAP.current[block.col] - block.height;
             return block;
           }
 
@@ -172,9 +172,14 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
   // Remove block from board
   const handleRemoveBlock = (index: number) => {
     const newBlocks = [...blocks];
-    BOARD_MAP.current[blocks[index].col] = BOARD_MAP.current[blocks[index].col] + blocks[index].height;
+    if (BOARD_MAP.current[blocks[index].col] < rows) {
+      BOARD_MAP.current[blocks[index].col] = Math.max(
+        BOARD_MAP.current[blocks[index].col] + blocks[index].height,
+        rows
+      );
+    }
+
     setBlocks(newBlocks.splice(index, 1));
-    console.log('how many times called', index);
   };
 
   return (

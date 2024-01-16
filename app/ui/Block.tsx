@@ -5,8 +5,8 @@ export type BlockInfo = {
   hash: string;
   row: number;
   col: number;
-  width: 1;
-  height: 1;
+  width: number;
+  height: number;
 };
 
 export type Prop = BlockInfo & {
@@ -18,7 +18,6 @@ export const BLOCK_UNIT = 40;
 export default function Block({ hash, row, col, onTxConfirmed }: Prop) {
   useEffect(() => {
     const checkIfTxConfirmed = async () => {
-      console.log('is this calling');
       // Getting the status of the transaction using getTransactionReceipt and logging accordingly
       const isConfirmed = await alchemy.core.getTransactionReceipt(hash).then((tx: any) => {
         if (!tx) {
@@ -39,11 +38,12 @@ export default function Block({ hash, row, col, onTxConfirmed }: Prop) {
         onTxConfirmed();
         clearInterval(intervals);
       }
-      console.log(confirmed, 'checking');
-    }, 1000);
+    }, 3000);
 
-    return () => clearInterval(intervals);
-  }, [hash, onTxConfirmed]);
+    return () => {
+      clearInterval(intervals);
+    };
+  }, []);
 
   return (
     <div
