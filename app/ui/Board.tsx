@@ -171,12 +171,7 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
   // Remove block from board
   const handleRemoveBlock = (index: number) => {
     const newBlocks = [...blocks];
-    if (BOARD_MAP.current[blocks[index].col] < rows) {
-      BOARD_MAP.current[blocks[index].col] = Math.max(
-        BOARD_MAP.current[blocks[index].col] + blocks[index].height,
-        rows
-      );
-    }
+    BOARD_MAP.current[blocks[index].col] = rows;
 
     setBlocks(newBlocks.splice(index, 1));
   };
