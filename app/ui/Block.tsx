@@ -7,6 +7,7 @@ export type BlockInfo = {
   col: number;
   width: number;
   height: number;
+  // isUniswapTx: boolean;
   //gas: number;
 };
 
@@ -16,7 +17,7 @@ export type Prop = BlockInfo & {
 
 export const BLOCK_UNIT = 40;
 
-export default function Block({ hash, row, col, onTxConfirmed }: Prop) {
+export default function Block({ hash, row, col, width, onTxConfirmed }: Prop) {
   useEffect(() => {
     const checkIfTxConfirmed = async () => {
       // Getting the status of the transaction using getTransactionReceipt and logging accordingly
@@ -39,7 +40,7 @@ export default function Block({ hash, row, col, onTxConfirmed }: Prop) {
         onTxConfirmed();
         clearInterval(intervals);
       }
-    }, 30000); // I set this to 5 seconds to allow users to see blocks on the board before tx is confirmed
+    }, 60000); // I set this to 60 seconds to allow users to see blocks on the board before tx is confirmed
 
     return () => {
       clearInterval(intervals);
@@ -51,7 +52,7 @@ export default function Block({ hash, row, col, onTxConfirmed }: Prop) {
       className="bg-blue-500 absolute transition-transform duration-500 ease-linear border border-black"
       style={{
         transform: `translate(${col * BLOCK_UNIT}px, ${row * BLOCK_UNIT}px)`,
-        width: BLOCK_UNIT,
+        width: BLOCK_UNIT * width,
         height: BLOCK_UNIT,
       }}
     ></div>

@@ -41,12 +41,13 @@ export default function Board({
     (tx: any) => {
       const hash = tx.hash;
       const colIndex = Math.floor(Math.random() * cols) % cols;
-
+      const isUniswap = '0xE592427A0AEce92De3Edee1F18E0157C05861564'.toLowerCase() === tx.to.toLowerCase();
+      console.log('this is tx', isUniswap);
       setBlocks((blocks: BlockInfo[]) => {
         const block = blocks.findIndex(block => block.hash === tx.hash);
         if (block !== -1) return blocks;
-
-        blocks.push({ hash, row: 0, col: colIndex, width: 1, height: 1 });
+        let width = Math.random() > 0.5 ? 2 : 1;
+        blocks.push({ hash, row: 0, col: colIndex, width, height: 1 });
 
         return blocks;
       });
@@ -58,12 +59,14 @@ export default function Board({
   useEffect(() => {
     if (!characterDead && !characterInvulnerable) {
       for (let block of blocks) {
-        if (block.row === characterPosition.row && block.col === characterPosition.col) {
-          clearInterval(INTERVAL.current);
-          reduceLife();
-          setCharacterDead(true);
-          alchemy.ws.removeAllListeners();
-          break;
+        for (let i = 0; i < block.width; i++) {
+          if (block.row === characterPosition.row && block.col + i === characterPosition.col) {
+            clearInterval(INTERVAL.current);
+            reduceLife();
+            setCharacterDead(true);
+            alchemy.ws.removeAllListeners();
+            return;
+          }
         }
       }
     }
@@ -127,19 +130,24 @@ export default function Board({
 
       BOARD_MAP.current = Array(cols).fill(rows);
 
-      console.log('calling intervals start');
       // Set intervals for falling blocks
       INTERVAL.current = setInterval(() => {
-        console.log('calling intervals');
         setBlocks(prevBlocks =>
           prevBlocks.map(block => {
-            if (block.row + 1 === BOARD_MAP.current[block.col]) {
-              BOARD_MAP.current[block.col] = BOARD_MAP.current[block.col] - block.height;
-              return block;
-            }
+            // stop falling
+            for (let i = 0; i < block.width; i++) {
+              if (block.row + 1 === BOARD_MAP.current[block.col + i]) {
+                const newgap = BOARD_MAP.current[block.col + i] - block.height;
+                for (let j = 0; j < block.width; j++) {
+                  BOARD_MAP.current[block.col + j] = newgap;
+                }
 
-            if (block.row >= BOARD_MAP.current[block.col]) {
-              return block;
+                return block;
+              }
+
+              if (block.row >= BOARD_MAP.current[block.col + i]) {
+                return block;
+              }
             }
 
             return {
@@ -172,11 +180,39 @@ export default function Board({
   }, [characterDead, cols, rows, handleNewTransaction]);
 
   // Remove block from board
-  const handleRemoveBlock = (index: number) => {
-    const newBlocks = [...blocks];
-    BOARD_MAP.current[blocks[index].col] = rows;
+  const handleRemoveBlock = (hash: string) => {
+    console.log('this is hash', hash);
+    const index = blocks.findIndex(block => block.hash === hash);
+    if (index === -1) {
+      return;
+    }
 
-    setBlocks(newBlocks.splice(index, 1));
+    const confirmedBlock = blocks[index];
+
+    for (let i = 0; i < confirmedBlock.width; i++) {
+      // Confirmed block is still in air
+      if (confirmedBlock.row < BOARD_MAP.current[confirmedBlock.col + i]) {
+        continue;
+      }
+
+      BOARD_MAP.current[confirmedBlock.col + i] = Math.min(
+        BOARD_MAP.current[confirmedBlock.col + i] + confirmedBlock.height,
+        rows
+      );
+
+      let minRowInCol = rows + 1;
+      blocks.forEach(block => {
+        if (block.col === confirmedBlock.col + i) {
+          if (block.row > BOARD_MAP.current[confirmedBlock.col + i]) {
+            minRowInCol = Math.min(block.row, minRowInCol);
+          }
+        }
+      });
+
+      BOARD_MAP.current[confirmedBlock.col + i] = minRowInCol - 1;
+    }
+
+    setBlocks(blocks.splice(index, 1));
   };
 
   return (
@@ -188,8 +224,8 @@ export default function Board({
       ref={boardRef}
     >
       <Character {...characterPosition} isDead={characterDead} isInvulnerable={characterInvulnerable} />
-      {blocks.map((block: any, index) => (
-        <Block key={block.hash} {...block} onTxConfirmed={() => handleRemoveBlock(index)} />
+      {blocks.map((block: any) => (
+        <Block key={block.hash} {...block} onTxConfirmed={() => handleRemoveBlock(block.hash)} />
       ))}
     </div>
   );
