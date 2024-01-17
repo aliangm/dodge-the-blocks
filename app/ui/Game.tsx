@@ -11,6 +11,7 @@ export default function Game() {
   const [seconds, setSeconds] = useState(0);
   const [lifes, setLifes] = useState(3);
   const [characterDead, setCharacterDead] = useState(false);
+  const [characterInvulnerable, setCharacterInvulnerable] = useState(true);
 
   const loaded = useMemo(() => {
     if (screenWidth) {
@@ -40,6 +41,10 @@ export default function Game() {
     return formattedTime;
   };
 
+  useEffect(() => {
+    setTimeout(() => setCharacterInvulnerable(false), 3000);
+  }, []);
+
   if (!loaded) {
     return;
   }
@@ -57,6 +62,7 @@ export default function Game() {
         rows={rows}
         cols={cols}
         characterDead={characterDead}
+        characterInvulnerable={characterInvulnerable}
         reduceLife={() => setLifes(lifes - 1)}
         setCharacterDead={setCharacterDead}
       />
@@ -68,7 +74,11 @@ export default function Game() {
           className={`focus:outline-none text-white bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 mb-2 dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-900 mt-10 ${
             characterDead && lifes > 0 ? 'opacity-1' : 'opacity-0'
           } transition`}
-          onClick={() => setCharacterDead(false)}
+          onClick={() => {
+            setCharacterDead(false);
+            setCharacterInvulnerable(true);
+            setTimeout(() => setCharacterInvulnerable(false), 3000);
+          }}
         >
           Retry
         </button>

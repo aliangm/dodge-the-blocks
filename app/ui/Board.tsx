@@ -4,6 +4,7 @@ import { Alchemy, AlchemySubscription, Network } from 'alchemy-sdk';
 import Block, { BlockInfo } from './Block';
 import { debounce } from 'lodash';
 import Character, { CHARACTER_HEIGHT_MULTIPLER } from './Character';
+import alchemy from '../alchemy/client';
 
 type Props = {
   width: number;
@@ -11,16 +12,24 @@ type Props = {
   rows: number;
   cols: number;
   characterDead: boolean;
+  characterInvulnerable: boolean;
 
   reduceLife: () => void;
   setCharacterDead: (isDead: boolean) => void;
 };
 
-export default function Board({ width, height, rows, cols, characterDead, setCharacterDead, reduceLife }: Props) {
+export default function Board({
+  width,
+  height,
+  rows,
+  cols,
+  characterDead,
+  characterInvulnerable,
+  setCharacterDead,
+  reduceLife,
+}: Props) {
   const [blocks, setBlocks] = useState<BlockInfo[]>([]);
   const [characterPosition, setCharacterPosition] = useState({ col: 0, row: rows - CHARACTER_HEIGHT_MULTIPLER });
-
-  const [characterInvulnerable, setCharacterInvulnerable] = useState(false);
 
   // Stores available row lines per each column where character can move
   const BOARD_MAP = useRef<number[]>(Array(cols).fill(rows));
@@ -28,98 +37,37 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
 
   const boardRef = useRef<HTMLDivElement>(null);
 
-  const handleNewTransaction = (tx: any) => {
-    const hash = tx.hash;
-    const colIndex = Math.floor(Math.random() * cols) % cols;
+  const handleNewTransaction = useCallback(
+    (tx: any) => {
+      const hash = tx.hash;
+      const colIndex = Math.floor(Math.random() * cols) % cols;
 
-    setBlocks((blocks: BlockInfo[]) => {
-      const block = blocks.findIndex(block => block.hash === tx.hash);
-      if (block !== -1) return blocks;
+      setBlocks((blocks: BlockInfo[]) => {
+        const block = blocks.findIndex(block => block.hash === tx.hash);
+        if (block !== -1) return blocks;
 
-      // if (blocks.length > 10) return blocks;
-      blocks.push({ hash, row: 0, col: colIndex, width: 1, height: 1 });
+        blocks.push({ hash, row: 0, col: colIndex, width: 1, height: 1 });
 
-      return blocks;
-    });
-  };
-
-  // Setup intervals to update block positions
-  useEffect(() => {
-    INTERVAL.current = setInterval(() => {
-      setBlocks(prevBlocks =>
-        prevBlocks.map(block => {
-          if (block.row + 1 === BOARD_MAP.current[block.col]) {
-            BOARD_MAP.current[block.col] = BOARD_MAP.current[block.col] - block.height;
-            return block;
-          }
-
-          if (block.row >= BOARD_MAP.current[block.col]) {
-            return block;
-          }
-
-          return {
-            ...block,
-            row: block.row + 1,
-          };
-        })
-      );
-
-      setCharacterPosition(characterPosition => {
-        // If character is going to drop onto fallen blocks
-        if (characterPosition.row + CHARACTER_HEIGHT_MULTIPLER >= BOARD_MAP.current[characterPosition.col]) {
-          return {
-            row: BOARD_MAP.current[characterPosition.col] - CHARACTER_HEIGHT_MULTIPLER,
-            col: characterPosition.col,
-          };
-        }
-
-        return {
-          ...characterPosition,
-          row: characterPosition.row + 1,
-        };
+        return blocks;
       });
-    }, 500);
-
-    boardRef.current?.focus();
-    return () => {
-      clearInterval(INTERVAL.current);
-    };
-  }, []);
+    },
+    [cols]
+  );
 
   // Collision check between blocks and the character
   useEffect(() => {
     if (!characterDead && !characterInvulnerable) {
-      blocks.forEach(block => {
-        // If falling block bottom touches character top
+      for (let block of blocks) {
         if (block.row === characterPosition.row && block.col === characterPosition.col) {
+          clearInterval(INTERVAL.current);
           reduceLife();
           setCharacterDead(true);
+          alchemy.ws.removeAllListeners();
+          break;
         }
-      });
+      }
     }
   }, [blocks, characterPosition, characterDead, characterInvulnerable, setCharacterDead, reduceLife]);
-
-  // Subscribe to tx events
-  useEffect(() => {
-    const connectToBlockchain = async () => {
-      const settings = {
-        apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
-        network: Network.ETH_MAINNET,
-      };
-
-      const alchemy = new Alchemy(settings);
-
-      // Subscription for Alchemy's pendingTransactions API
-      alchemy.ws.on(
-        {
-          method: AlchemySubscription.PENDING_TRANSACTIONS,
-        },
-        debounce(tx => handleNewTransaction(tx), 100)
-      );
-    };
-
-    connectToBlockchain();
-  }, []);
 
   // Key press handler
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = event => {
@@ -158,15 +106,70 @@ export default function Board({ width, height, rows, cols, characterDead, setCha
   useEffect(() => {
     // Is alive
     if (!characterDead) {
-      // Set character invulnerable for 5 seconds
       if (boardRef.current) {
         boardRef.current.focus();
       }
 
-      setCharacterInvulnerable(true);
-      setTimeout(() => setCharacterInvulnerable(false), 3000);
+      // Refresh blocks
+      setBlocks([]);
+
+      const connectToBlockchain = async () => {
+        // Subscription for Alchemy's pendingTransactions API
+        alchemy.ws.on(
+          {
+            method: AlchemySubscription.PENDING_TRANSACTIONS,
+          },
+          debounce(tx => handleNewTransaction(tx), 100)
+        );
+      };
+
+      connectToBlockchain();
+
+      BOARD_MAP.current = Array(cols).fill(rows);
+
+      console.log('calling intervals start');
+      // Set intervals for falling blocks
+      INTERVAL.current = setInterval(() => {
+        console.log('calling intervals');
+        setBlocks(prevBlocks =>
+          prevBlocks.map(block => {
+            if (block.row + 1 === BOARD_MAP.current[block.col]) {
+              BOARD_MAP.current[block.col] = BOARD_MAP.current[block.col] - block.height;
+              return block;
+            }
+
+            if (block.row >= BOARD_MAP.current[block.col]) {
+              return block;
+            }
+
+            return {
+              ...block,
+              row: block.row + 1,
+            };
+          })
+        );
+
+        setCharacterPosition(characterPosition => {
+          // If character is going to drop onto fallen blocks
+          if (characterPosition.row + CHARACTER_HEIGHT_MULTIPLER >= BOARD_MAP.current[characterPosition.col]) {
+            return {
+              row: BOARD_MAP.current[characterPosition.col] - CHARACTER_HEIGHT_MULTIPLER,
+              col: characterPosition.col,
+            };
+          }
+
+          return {
+            ...characterPosition,
+            row: characterPosition.row + 1,
+          };
+        });
+      }, 500);
+
+      return () => {
+        clearInterval(INTERVAL.current);
+      };
     }
-  }, [characterDead]);
+  }, [characterDead, cols, rows, handleNewTransaction]);
 
   // Remove block from board
   const handleRemoveBlock = (index: number) => {

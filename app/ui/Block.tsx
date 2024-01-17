@@ -7,6 +7,7 @@ export type BlockInfo = {
   col: number;
   width: number;
   height: number;
+  //gas: number;
 };
 
 export type Prop = BlockInfo & {
