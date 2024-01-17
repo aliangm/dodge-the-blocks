@@ -82,6 +82,10 @@ export default function Game() {
         >
           Retry
         </button>
+        <div className="mt-10 text-sm px-3 text-center">
+          To defy gravity and jump,
+          <br /> press the W key repeatedly
+        </div>
       </div>
     </div>
   );

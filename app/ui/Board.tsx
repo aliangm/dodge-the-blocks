@@ -48,7 +48,7 @@ export default function Board({
       setBlocks((blocks: BlockInfo[]) => {
         const block = blocks.findIndex(block => block.hash === tx.hash);
         if (block !== -1) return blocks;
-        let width = Math.random() > 0.5 ? 2 : 1;
+        let width = Number(tx.gas) > 500000 ? 2 : 1;
         blocks.push({ hash, row: 0, col: colIndex, width, height: 1, isUniswapTx: isUniswap });
 
         return blocks;
@@ -101,7 +101,7 @@ export default function Board({
       case 'W':
         setCharacterPosition(characterPosition => ({
           col: characterPosition.col,
-          row: Math.max(characterPosition.row - characterHeight * 2, 0),
+          row: Math.max(characterPosition.row - 1, 0),
         }));
         break;
     }
@@ -193,31 +193,7 @@ export default function Board({
       return;
     }
 
-    const confirmedBlock = blocks[index];
-
-    for (let i = 0; i < confirmedBlock.width; i++) {
-      // Confirmed block is still in air
-      if (confirmedBlock.row < BOARD_MAP.current[confirmedBlock.col + i]) {
-        continue;
-      }
-
-      BOARD_MAP.current[confirmedBlock.col + i] = Math.min(
-        BOARD_MAP.current[confirmedBlock.col + i] + confirmedBlock.height,
-        rows
-      );
-
-      let minRowInCol = rows + 1;
-      blocks.forEach(block => {
-        if (block.col === confirmedBlock.col + i) {
-          if (block.row > BOARD_MAP.current[confirmedBlock.col + i]) {
-            minRowInCol = Math.min(block.row, minRowInCol);
-          }
-        }
-      });
-
-      BOARD_MAP.current[confirmedBlock.col + i] = minRowInCol - 1;
-    }
-
+    BOARD_MAP.current = Array(cols).fill(rows);
     setBlocks(blocks.splice(index, 1));
   };
 
