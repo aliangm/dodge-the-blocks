@@ -7,7 +7,8 @@ export type BlockInfo = {
   col: number;
   width: number;
   height: number;
-  // isUniswapTx: boolean;
+  isUniswapTx: boolean;
+  fallen?: boolean;
   //gas: number;
 };
 
@@ -17,7 +18,7 @@ export type Prop = BlockInfo & {
 
 export const BLOCK_UNIT = 40;
 
-export default function Block({ hash, row, col, width, onTxConfirmed }: Prop) {
+export default function Block({ hash, row, col, width, isUniswapTx, onTxConfirmed }: Prop) {
   useEffect(() => {
     const checkIfTxConfirmed = async () => {
       // Getting the status of the transaction using getTransactionReceipt and logging accordingly
@@ -47,9 +48,10 @@ export default function Block({ hash, row, col, width, onTxConfirmed }: Prop) {
     };
   }, []);
 
+  const bgColor = isUniswapTx ? 'bg-purple-500' : 'bg-blue-500';
   return (
     <div
-      className="bg-blue-500 absolute transition-transform duration-500 ease-linear border border-black"
+      className={`${bgColor} absolute transition-transform duration-500 ease-linear border border-black`}
       style={{
         transform: `translate(${col * BLOCK_UNIT}px, ${row * BLOCK_UNIT}px)`,
         width: BLOCK_UNIT * width,
