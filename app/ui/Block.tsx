@@ -9,6 +9,7 @@ export type BlockInfo = {
   height: number;
   isUniswapTx: boolean;
   fallen?: boolean;
+  destroyed?: boolean;
   //gas: number;
 };
 
@@ -41,7 +42,7 @@ export default function Block({ hash, row, col, width, isUniswapTx, onTxConfirme
         onTxConfirmed();
         clearInterval(intervals);
       }
-    }, 60000); // I set this to 60 seconds to allow users to see blocks on the board before tx is confirmed
+    }, 120000); // I set this to 120 seconds to allow users to see blocks on the board before tx is confirmed
 
     return () => {
       clearInterval(intervals);

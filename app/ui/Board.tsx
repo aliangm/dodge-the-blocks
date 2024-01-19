@@ -13,6 +13,7 @@ type Props = {
   cols: number;
   characterDead: boolean;
   characterInvulnerable: boolean;
+  gravity: number;
 
   reduceLife: () => void;
   setCharacterDead: (isDead: boolean) => void;
@@ -25,6 +26,7 @@ export default function Board({
   cols,
   characterDead,
   characterInvulnerable,
+  gravity,
   setCharacterDead,
   reduceLife,
 }: Props) {
@@ -48,7 +50,7 @@ export default function Board({
       setBlocks((blocks: BlockInfo[]) => {
         const block = blocks.findIndex(block => block.hash === tx.hash);
         if (block !== -1) return blocks;
-        let width = Number(tx.gas) > 500000 ? 2 : 1;
+        let width = Number(tx.gas) > 300000 ? 2 : 1;
         blocks.push({ hash, row: 0, col: colIndex, width, height: 1, isUniswapTx: isUniswap });
 
         return blocks;
@@ -71,8 +73,32 @@ export default function Board({
           }
         }
       }
+
+      blocks.forEach(block => {
+        if (block.isUniswapTx) {
+          if (block.row === rows) {
+            for (let i = 0; i < block.width; i++) {
+              BOARD_MAP.current[block.col + i] = rows; // Restore blocks bottom line
+            }
+          }
+
+          // Still uniswap block is on board
+          if (block.row < rows) {
+            for (let i = 0; i < block.width; i++) {
+              if (block.row === BOARD_MAP.current[block.col + i]) {
+                BOARD_MAP.current[block.col + i] = rows * 2; // Make blocks keep falling
+              }
+            }
+          }
+        }
+      });
+
+      const aliveBlocks = blocks.filter(block => !block.destroyed);
+      if (aliveBlocks.length !== blocks.length) {
+        setBlocks(aliveBlocks);
+      }
     }
-  }, [blocks, characterPosition, characterDead, characterInvulnerable, setCharacterDead, reduceLife]);
+  }, [rows, blocks, characterPosition, characterDead, characterInvulnerable, setCharacterDead, reduceLife]);
 
   // Key press handler
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = event => {
@@ -115,8 +141,10 @@ export default function Board({
         boardRef.current.focus();
       }
 
-      // Refresh blocks
-      setBlocks([]);
+      // Refresh blocks if not boosting
+      if (gravity !== 2) {
+        setBlocks([]);
+      }
 
       const connectToBlockchain = async () => {
         // Subscription for Alchemy's pendingTransactions API
@@ -152,6 +180,17 @@ export default function Board({
                 }
 
                 if (block.row >= BOARD_MAP.current[block.col + i]) {
+                  if (block.width > 1) {
+                    if (BOARD_MAP.current[block.col] >= rows * 2) {
+                      BOARD_MAP.current[block.col + 1] = BOARD_MAP.current[block.col + 1] + 1;
+                      return { ...block, fallen: true, destroyed: true };
+                    }
+
+                    if (BOARD_MAP.current[block.col + 1] >= rows * 2) {
+                      BOARD_MAP.current[block.col] = BOARD_MAP.current[block.col] + 1;
+                      return { ...block, fallen: true, destroyed: true };
+                    }
+                  }
                   return { ...block, fallen: true };
                 }
               }
@@ -178,13 +217,13 @@ export default function Board({
             row: characterPosition.row + 1,
           };
         });
-      }, 500);
+      }, 500 / gravity);
 
       return () => {
         clearInterval(INTERVAL.current);
       };
     }
-  }, [characterDead, cols, rows, characterHeight, handleNewTransaction]);
+  }, [characterDead, cols, rows, gravity, characterHeight, handleNewTransaction]);
 
   // Remove block from board
   const handleRemoveBlock = (hash: string) => {
