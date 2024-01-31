@@ -29,12 +29,14 @@ export default function Game() {
     }
     INTERVAL.current = setInterval(() => {
       setSeconds(prevSeconds => prevSeconds + 1);
-      setScore(score => gravity * gravity + score);
+      if (!characterDead) {
+        setScore(score => gravity * gravity + score);
+      }
     }, 1000);
 
     // Cleanup function to clear the interval when the component is unmounted
     return () => clearInterval(INTERVAL.current);
-  }, [gravity]);
+  }, [gravity, characterDead]);
 
   const formatTime = (timeInSeconds: number) => {
     const hours = Math.floor(timeInSeconds / 3600);
